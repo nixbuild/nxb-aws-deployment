@@ -1,0 +1,107 @@
+#cloud-config
+
+hostname: '${server_hostname}'
+
+write_files:
+
+########
+# Configure authorized SSH keys for root
+#- path: /etc/ssh/authorized_keys.d/root
+#  permissions: '0444'
+#  content: |
+#    ssh-ed25519 ...
+#    ssh-ed25519 ...
+
+########
+# We load secrets from SSM, but these files can be deployed in any way you like.
+# Just keep in mind that the Biscuit key must be readable by the
+# 'nixbuild-secrets' group, and the SSH host key must readable by the
+# 'nixbuild-frontend' user.
+#
+# This script is executed in the end of this file.
+#
+- path: /etc/nixbuild.net/init.sh
+  permissions: '0755'
+  content: |
+    #!/bin/sh
+    aws ssm get-parameter \
+      --name "${ssm_param_biscuit_secretkey}" \
+      --with-decryption \
+      --query "Parameter.Value" \
+      --output text \
+      | install /dev/stdin /etc/nixbuild.net/biscuit-key \
+          --mode 0440 \
+          --group nixbuild-secrets
+
+    aws ssm get-parameter \
+      --name "${ssm_param_ssh_hostkey}" \
+      --with-decryption \
+      --query "Parameter.Value" \
+      --output text \
+      | install /dev/stdin /etc/nixbuild.net/ssh-host-key \
+          --mode 0400 \
+          --owner nixbuild-frontend
+
+########
+# The nixbuild.net configuration. Uses the 'ucl' configuration language, see
+# https://github.com/vstakhov/libucl.
+- path: /etc/nixbuild.net/conf.d/nixbuild.conf
+  permissions: '0644'
+  content: |
+    slurmctld {
+      host = ${server_hostname}
+      ip = ${server_ip}
+    }
+
+    nard {
+      s3.allow-ambient-credentials = true
+      push {
+        s3 {
+          concurrency = 6
+          max-concurrent-nars = 6
+        }
+      }
+    }
+
+    nixbuild {
+      # Matches the files put in place by our 'init.sh' script
+      biscuit-private-key-file = "/etc/nixbuild.net/biscuit-key"
+      ssh-host-key-file = "/etc/nixbuild.net/ssh-host-key"
+
+      debug-logs = true
+
+      require-state-volume = true
+      state-volume-device = "/dev/sdb"
+
+      predefined-accounts = [
+      ]
+    }
+
+    ec2 {
+      build-node-templates = [
+        { ami = ${builder_x86_64_ami_id}
+        , region = ${builder_region}
+        , security-group = ${builder_sg}
+        , subnet = ${builder_sn}
+        , public-ip = false
+        , ssh-key-name = ${builder_key_name}
+        , instance-type = c5a.4xlarge # 16 vCPUs / 32 GiB
+        , count = 16
+        , weight = 0
+        },
+
+        { ami = ${builder_aarch64_ami_id}
+        , region = ${builder_region}
+        , security-group = ${builder_sg}
+        , subnet = ${builder_sn}
+        , public-ip = false
+        , ssh-key-name = ${builder_key_name}
+        , instance-type = c6g.4xlarge # 16 vCPUs / 32 GiB
+        , count = 16
+        , weight = 0
+        }
+      ]
+    }
+
+runcmd:
+- /etc/nixbuild.net/init.sh
