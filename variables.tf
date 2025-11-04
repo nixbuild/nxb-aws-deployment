@@ -32,26 +32,35 @@ variable "nxb_server_hostname" {
 locals {
   amis = jsondecode(file("${path.module}/amis.json"))
 
-  server_ami = [
-    for ami in local.amis : ami
-    if
-    ami.image_info.product == "nxb-server-ec2" &&
-    ami.image_info.version == var.nxb_version
-  ][0]
+  server_amis = [
+    for ami in local.amis : ami if
+      ami.image_info.product == "nxb-server-ec2" &&
+      ami.image_info.version == var.nxb_version
+  ]
+  server_ami = length(local.server_amis) == 0 ? null : one([
+    for ami in local.server_amis : ami if
+      ami.registration_time == reverse(sort(local.server_amis[*].registration_time))[0]
+  ])
 
-  builder_x86_64_ami = [
-    for ami in local.amis : ami
-    if
-    ami.image_info.product == "nxb-builder-ec2" &&
-    ami.image_info.version == var.nxb_version &&
-    ami.image_info.system == "x86_64-linux"
-  ][0]
+  builder_x86_64_amis = [
+    for ami in local.amis : ami if
+      ami.image_info.product == "nxb-builder-ec2" &&
+      ami.image_info.version == var.nxb_version &&
+      ami.image_info.system == "x86_64-linux"
+  ]
+  builder_x86_64_ami = length(local.builder_x86_64_amis) == 0 ? null : one([
+    for ami in local.builder_x86_64_amis : ami if
+      ami.registration_time == reverse(sort(local.builder_x86_64_amis[*].registration_time))[0]
+  ])
 
-  builder_aarch64_ami = [
-    for ami in local.amis : ami
-    if
-    ami.image_info.product == "nxb-builder-ec2" &&
-    ami.image_info.version == var.nxb_version &&
-    ami.image_info.system == "aarch64-linux"
-  ][0]
+  builder_aarch64_amis = [
+    for ami in local.amis : ami if
+      ami.image_info.product == "nxb-builder-ec2" &&
+      ami.image_info.version == var.nxb_version &&
+      ami.image_info.system == "aarch64-linux"
+  ]
+  builder_aarch64_ami = length(local.builder_aarch64_amis) == 0 ? null : one([
+    for ami in local.builder_aarch64_amis : ami if
+      ami.registration_time == reverse(sort(local.builder_aarch64_amis[*].registration_time))[0]
+  ])
 }
