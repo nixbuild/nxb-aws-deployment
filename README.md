@@ -81,17 +81,22 @@ Now put the parameters into SSM:
 
 ```
 aws ssm put-parameter \
+  --region <YOUR REGION> \
   --type SecureString \
   --key-id alias/aws/ssm \
   --name "NIXBUILD_SSH_HOSTKEY" \
   --value "$(cat ./ssh-host-key)"
 
 aws ssm put-parameter \
+  --region <YOUR REGION> \
   --type SecureString \
   --key-id alias/aws/ssm \
   --name "NIXBUILD_BISCUIT_SECRETKEY" \
   --value "$(cat ./biscuit-key)"
 ```
+
+It seems `aws ssm put-parameter` can ignore your default region, so to be sure
+the secrets end up in the correct region, specify it explicitly with `--region`.
 
 ## Deployment
 
