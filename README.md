@@ -64,6 +64,11 @@ First, generate the secrets:
   locally you can just start a Nix shell with `nix shell nixpkgs#biscuit-cli` to
   make the above command work.
 
+  **Note**, lately `biscuit-cli` has started printing a prefix like
+  `ed25519-private/` before the key material. nixbuild.net doesn't yet handle
+  parsing keys with such a prefix, so remove the prefix before storing the key
+  to SSM.
+
 Then, come up with SSM parameter names for the secrets. If you are paranoid, you
 can use something completely random. Add the names to `terraform.tfvars`:
 
