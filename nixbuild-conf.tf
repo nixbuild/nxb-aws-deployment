@@ -8,28 +8,17 @@ locals {
       ip   = local.nxb_server_ip
     }
 
-    nard = {
-      s3 = {
-        allow-ambient-credentials = true
-      }
-      push = {
-        s3 = {
-          concurrency         = 6
-          max-concurrent-nars = 6
-        }
-      }
-    }
-
     nixbuild = {
       # These are put in place by our 'init.sh' script (see cloud-init.tf)
       biscuit-private-key-file = "/etc/nixbuild.net/biscuit-key"
-      ssh-host-key-file        = "/etc/nixbuild.net/ssh-host-key"
+      ssh-host-key-file = "/etc/nixbuild.net/ssh-host-key"
 
-      debug-logs           = true
-      require-state-volume = true
+      # Makes debug logs show up directly in the build logs for the Nix client
+      debug-logs = true
 
       # Matches the EBS configured in main.tf
-      state-volume-device  = "/dev/sdb"
+      state-volume-device = "/dev/sdb"
+      require-state-volume = true
 
       predefined-accounts = []
     }
