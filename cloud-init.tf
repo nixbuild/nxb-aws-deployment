@@ -2,18 +2,13 @@ locals {
   nxb_server_userdata = join("\n", ["#cloud-config", yamlencode({
     hostname = var.nxb_server_hostname
 
-    write_files = [
-
-      ########
-      # Do this to configure authorized SSH keys for the root user (allows
-      # you to SSH to port 22 on nxb-server).
-      #{
-      #  path        = "/etc/ssh/authorized_keys.d/root"
-      #  permissions = "0444"
-      #  content     = <<-EOT
-      #    ssh-ed25519 ...
-      #  EOT
-      #},
+    write_files = concat(
+      length(var.nxb_server_ssh_public_keys) > 0 ? [{
+        path        = "/etc/ssh/authorized_keys.d/root"
+        permissions = "0444"
+        content     = join("\n", var.nxb_server_ssh_public_keys)
+      }] : [],
+      [
 
       ########
       # We load secrets from SSM, but these files can be deployed in any way
@@ -55,7 +50,7 @@ locals {
         permissions = "0644"
         content     = local.nixbuild_conf
       },
-    ]
+    ])
 
     ########
     # Run the script that sets up secrets etc

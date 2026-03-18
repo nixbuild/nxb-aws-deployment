@@ -30,6 +30,12 @@ variable "nxb_server_hostname" {
   default     = "nxb-server"
 }
 
+variable "nxb_server_ssh_public_keys" {
+  description = "List of SSH public keys to authorize for the root user on nxb-server"
+  type        = list(string)
+  default     = []
+}
+
 variable "nxb_server_ami" {
   description = "The AMI to use for the nxb-server instance"
   type        = string

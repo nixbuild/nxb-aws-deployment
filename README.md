@@ -90,19 +90,32 @@ make sure to update the `ssm_param_biscuit_secretkey` and
 ## Deployment
 
 1. Configure the variables in [terraform.tfvars](./terraform.tfvars). At
-   minimum, you need to set:
+   minimum, you should to set:
 
-   * `region` — the AWS region to deploy in (e.g. `eu-north-1`).
-   * `nxb_server_instance_type` — the EC2 instance type for the nxb-server
+   * `region`: The AWS region to deploy in (e.g. `eu-north-1`).
+
+   * `nxb_server_instance_type`: The EC2 instance type for the nxb-server
      (e.g. `c5a.4xlarge`).
+
+   * `nxb_server_ssh_public_keys`: A list of SSH public keys to authorize for
+     the `root` user on nxb-server, allowing you to SSH to port 22 (the system
+     SSH server). This is useful to be able to log in to the server to
+     troubleshoot issues. For example:
+
+     ```hcl
+     nxb_server_ssh_public_keys = [
+       "ssh-ed25519 AAAA... user@host",
+     ]
+     ```
 
    You can optionally set:
 
-   * `nxb_version` — the nixbuild.net version to deploy. Defaults to the
+   * `nxb_version`: The nixbuild.net version to deploy. Defaults to the
      latest available version. See the
      [nixbuild.net AMI catalog](https://catalog.nixbuild.net/aws/amis.json) for
      available versions.
-   * `nxb_server_ami` — which server AMI to use. Defaults to `server_x86_64`.
+
+   * `nxb_server_ami`: Which server AMI to use. Defaults to `server_x86_64`.
      Set to `server_aarch64` if you want an ARM-based server.
 
 2. Edit the `nixbuild.conf` contents in [nixbuild-conf.tf](./nixbuild-conf.tf)
