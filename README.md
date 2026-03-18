@@ -1,7 +1,14 @@
 # nixbuild.net AWS Deployment
 
-This directory defines a simple Terraform deployment of nixbuild.net, that you
+This directory defines a simple Terraform deployment of nixbuild.net that you
 can use directly or as a base for a more refined deployment.
+
+To be able to use this configuration you need to procure the Enterprise version
+of nixbuild.net, or have an active trial agreement. This will give you
+access to the [EC2 AMIs](https://catalog.nixbuild.net/aws/amis.json) used to
+run nixbuild.net on AWS. Please contact
+[support@nixbuild.net](mailto:support@nixbuild.net) if you want to trial
+nixbuild.net on AWS.
 
 
 ## Repository Overview
@@ -145,3 +152,34 @@ make sure to update the `ssm_param_biscuit_secretkey` and
    After a successful apply, the public IP address of the nxb-server will be
    shown as the `nxb_server_public_ip` output. You can use this IP to connect
    your Nix clients to your nixbuild.net deployment.
+
+
+## Verify Deployment
+
+When `tofu apply` is done you should see the public IP address of your
+`nxb-server` instance. This is the endpoint that will receive build requests
+from Nix clients, on port `2222`. To verify that your deployment works, first
+try connecting to the nixbuild.net [admin
+shell](https://docs.nixbuild.net/configuration/) for your predefined account:
+
+```
+ssh -p 2222 <IP> shell
+```
+
+It doesn't matter which user name you connect with, but you should make sure
+that the SSH key you configured in [nixbuild-conf.tf](./nixbuild-conf.tf) is
+used (through an SSH agent or the `-i` option of `ssh`).
+
+If you have troubles accessing the admin shell, contact the nixbuild.net team.
+
+If the admin shell works, you can use the [Getting
+Started](https://docs.nixbuild.net/getting-started/) guide to see if you can
+get builds running. Remember, your AWS deployment is listening for Nix traffic
+on port 2222, not port 22 as the public nixbuild.net service does.
+
+
+## Next Steps
+
+This Terraform configuration should be used for evaluation purposes and as a
+reference for setting up your own production-grade deployments. The nixbuild.net
+team will help you out as needed from here!
