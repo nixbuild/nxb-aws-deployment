@@ -4,8 +4,9 @@ variable "region" {
 }
 
 variable "nxb_version" {
-  description = "nixbuild.net Version"
+  description = "nixbuild.net Version (defaults to the latest available version)"
   type        = string
+  default     = null
 }
 
 variable "ssm_param_biscuit_secretkey" {
@@ -42,6 +43,13 @@ data "http" "amis" {
 locals {
   all_amis = jsondecode(data.http.amis.response_body)
 
+  latest_nxb_version = [
+    for ami in local.all_amis : ami.image_info.version if
+      ami.registration_time == reverse(sort(local.all_amis[*].registration_time))[0]
+  ][0]
+
+  nxb_version = coalesce(var.nxb_version, local.latest_nxb_version)
+
   ami_queries = {
     server_x86_64    = { product = "nxb-server-ec2", system = "x86_64-linux" }
     server_aarch64   = { product = "nxb-server-ec2", system = "aarch64-linux" }
@@ -54,7 +62,7 @@ locals {
       for ami in local.all_amis : ami if
         ami.region == var.region &&
         ami.image_info.product == query.product &&
-        ami.image_info.version == var.nxb_version &&
+        ami.image_info.version == local.nxb_version &&
         ami.image_info.system == query.system
     ]
   }

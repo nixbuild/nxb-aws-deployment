@@ -93,14 +93,15 @@ make sure to update the `ssm_param_biscuit_secretkey` and
    minimum, you need to set:
 
    * `region` — the AWS region to deploy in (e.g. `eu-north-1`).
-   * `nxb_version` — the nixbuild.net version to deploy. See the
-     [nixbuild.net AMI catalog](https://catalog.nixbuild.net/aws/amis.json) for
-     available versions.
    * `nxb_server_instance_type` — the EC2 instance type for the nxb-server
      (e.g. `c5a.4xlarge`).
 
    You can optionally set:
 
+   * `nxb_version` — the nixbuild.net version to deploy. Defaults to the
+     latest available version. See the
+     [nixbuild.net AMI catalog](https://catalog.nixbuild.net/aws/amis.json) for
+     available versions.
    * `nxb_server_ami` — which server AMI to use. Defaults to `server_x86_64`.
      Set to `server_aarch64` if you want an ARM-based server.
 
