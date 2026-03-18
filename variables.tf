@@ -29,38 +29,41 @@ variable "nxb_server_hostname" {
   default     = "nxb-server"
 }
 
+variable "nxb_server_ami" {
+  description = "The AMI to use for the nxb-server instance"
+  type        = string
+  default     = "server_x86_64"
+}
+
+data "http" "amis" {
+  url = "https://catalog.nixbuild.net/aws/amis.json"
+}
+
 locals {
-  amis = jsondecode(file("${path.module}/amis.json"))
+  all_amis = jsondecode(data.http.amis.response_body)
 
-  server_amis = [
-    for ami in local.amis : ami if
-      ami.image_info.product == "nxb-server-ec2" &&
-      ami.image_info.version == var.nxb_version
-  ]
-  server_ami = length(local.server_amis) == 0 ? null : one([
-    for ami in local.server_amis : ami if
-      ami.registration_time == reverse(sort(local.server_amis[*].registration_time))[0]
-  ])
+  ami_queries = {
+    server_x86_64    = { product = "nxb-server-ec2", system = "x86_64-linux" }
+    server_aarch64   = { product = "nxb-server-ec2", system = "aarch64-linux" }
+    builder_x86_64   = { product = "nxb-builder-ec2", system = "x86_64-linux" }
+    builder_aarch64  = { product = "nxb-builder-ec2", system = "aarch64-linux" }
+  }
 
-  builder_x86_64_amis = [
-    for ami in local.amis : ami if
-      ami.image_info.product == "nxb-builder-ec2" &&
-      ami.image_info.version == var.nxb_version &&
-      ami.image_info.system == "x86_64-linux"
-  ]
-  builder_x86_64_ami = length(local.builder_x86_64_amis) == 0 ? null : one([
-    for ami in local.builder_x86_64_amis : ami if
-      ami.registration_time == reverse(sort(local.builder_x86_64_amis[*].registration_time))[0]
-  ])
+  ami_candidates = {
+    for name, query in local.ami_queries : name => [
+      for ami in local.all_amis : ami if
+        ami.region == var.region &&
+        ami.image_info.product == query.product &&
+        ami.image_info.version == var.nxb_version &&
+        ami.image_info.system == query.system
+    ]
+  }
 
-  builder_aarch64_amis = [
-    for ami in local.amis : ami if
-      ami.image_info.product == "nxb-builder-ec2" &&
-      ami.image_info.version == var.nxb_version &&
-      ami.image_info.system == "aarch64-linux"
-  ]
-  builder_aarch64_ami = length(local.builder_aarch64_amis) == 0 ? null : one([
-    for ami in local.builder_aarch64_amis : ami if
-      ami.registration_time == reverse(sort(local.builder_aarch64_amis[*].registration_time))[0]
-  ])
+  amis = {
+    for name, candidates in local.ami_candidates : name =>
+      length(candidates) == 0 ? null : one([
+        for ami in candidates : ami if
+          ami.registration_time == reverse(sort(candidates[*].registration_time))[0]
+      ])
+  }
 }

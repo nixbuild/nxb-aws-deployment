@@ -1,5 +1,13 @@
 terraform {
   backend "local" {}
+  required_providers {
+    aws = {
+      source = "hashicorp/aws"
+    }
+    http = {
+      source = "hashicorp/http"
+    }
+  }
 }
 
 provider "aws" {
@@ -7,14 +15,14 @@ provider "aws" {
 }
 
 locals {
-  nxb_server_ip = cidrhost(aws_subnet.public.cidr_block, 10)
+  availability_zone = "${var.region}a"
+  nxb_server_ip     = cidrhost(aws_subnet.public.cidr_block, 10)
 }
 
 # VPC
 
 resource "aws_vpc" "nxb" {
   cidr_block           = "10.0.0.0/20"
-  enable_dns_support   = true
   enable_dns_hostnames = true
   tags = {
     Name = "nxb"
@@ -26,9 +34,8 @@ resource "aws_vpc" "nxb" {
 resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.nxb.id
   cidr_block              = "10.0.0.0/21"
-  availability_zone       = "${var.region}a"
+  availability_zone       = local.availability_zone
   map_public_ip_on_launch = true
-  depends_on              = [aws_internet_gateway.public]
 }
 
 resource "aws_internet_gateway" "public" {
@@ -57,10 +64,9 @@ resource "aws_eip" "nxb_server" {
 # Private subnet
 
 resource "aws_subnet" "private" {
-  vpc_id                  = aws_vpc.nxb.id
-  cidr_block              = "10.0.8.0/21"
-  availability_zone       = "${var.region}a"
-  map_public_ip_on_launch = false
+  vpc_id            = aws_vpc.nxb.id
+  cidr_block        = "10.0.8.0/21"
+  availability_zone = local.availability_zone
 }
 
 resource "aws_eip" "nat" {
@@ -153,13 +159,6 @@ resource "aws_security_group" "private" {
   }
 }
 
-# Due to an unfortunate bug in the cloud-init implementation we use, every
-# instance using a NixBuild AMI must have a key attached. You can use a
-# throw-away one if you rather configure access in some other way.
-resource "aws_key_pair" "root" {
-  public_key = file("./dummy-ssh-key.pub")
-}
-
 
 # IAM
 
@@ -212,13 +211,9 @@ data "aws_iam_policy_document" "nxb_server" {
   }
 }
 
-resource "aws_iam_policy" "nxb_server" {
+resource "aws_iam_role_policy" "nxb_server" {
+  role   = aws_iam_role.nxb_server.id
   policy = data.aws_iam_policy_document.nxb_server.json
-}
-
-resource "aws_iam_role_policy_attachment" "nxb_server_nxb" {
-  role       = aws_iam_role.nxb_server.name
-  policy_arn = aws_iam_policy.nxb_server.arn
 }
 
 resource "aws_iam_role_policy_attachment" "nxb_server_ssm" {
@@ -234,7 +229,7 @@ resource "aws_iam_instance_profile" "nxb_server" {
 # EBS
 
 resource "aws_ebs_volume" "nxb_data" {
-  availability_zone = "${var.region}a"
+  availability_zone = local.availability_zone
   size              = 2048
   type              = "gp3"
   iops              = 6000
@@ -245,30 +240,22 @@ resource "aws_ebs_volume" "nxb_data" {
 # EC2
 
 resource "aws_instance" "nxb_server" {
-  ami                    = local.server_ami.ami_id
+  ami                    = local.amis[var.nxb_server_ami].ami_id
   instance_type          = var.nxb_server_instance_type
-  key_name               = aws_key_pair.root.key_name
   iam_instance_profile   = aws_iam_instance_profile.nxb_server.name
   subnet_id              = aws_subnet.public.id
   vpc_security_group_ids = [aws_security_group.public.id]
   private_ip             = local.nxb_server_ip
 
-  user_data = templatefile("${path.module}/cloud-init.yaml", {
-    server_hostname             = var.nxb_server_hostname
-    server_ip                   = local.nxb_server_ip
-    ssm_param_biscuit_secretkey = var.ssm_param_biscuit_secretkey
-    ssm_param_ssh_hostkey       = var.ssm_param_ssh_hostkey
-    builder_sg                  = aws_security_group.private.id
-    builder_sn                  = aws_subnet.private.id
-    builder_region              = var.region
-    builder_key_name            = aws_key_pair.root.key_name
-    builder_x86_64_ami_id       = local.builder_x86_64_ami.ami_id
-    builder_aarch64_ami_id      = local.builder_aarch64_ami.ami_id
-  })
+  user_data_base64 = base64gzip(local.nxb_server_userdata)
 
   root_block_device {
     volume_size = 10
     volume_type = "gp3"
+  }
+
+  metadata_options {
+    http_tokens = "required"
   }
 
   tags = {
