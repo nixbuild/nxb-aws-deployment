@@ -13,8 +13,12 @@ nixbuild.net on AWS.
 
 ## Repository Overview
 
-[variables.tf](./variables.tf) defines all available Terraform variables along
-with the AMI lookup logic.
+[nixbuild-conf.tf](./nixbuild-conf.tf) contains the configuration for your
+nixbuild.net deployment. This includes pre-defined accounts, build cluster
+configuration etc.
+
+[cloud-init.tf](./cloud-init.tf) contains the necessary directives to load
+secrets from SSM, and to put the nixbuild.net configuration in place.
 
 [main.tf](./main.tf) defines a VPC, a subnet, an EBS volume used for
 nixbuild.net state and an EC2 instance for the `nxb-server`. It also defines all
@@ -23,12 +27,8 @@ read secrets from SSM and create and destroy builder instances. The deployment
 is intentionally simple, and you should likely adapt it to your own needs. For
 example, the IAM policies can be locked down more.
 
-[cloud-init.tf](./cloud-init.tf) contains the necessary directives to load
-secrets from SSM.
-
-[nixbuild-conf.tf](./nixbuild-conf.tf) contains the configuration for your
-nixbuild.net deployment. This includes pre-defined accounts, build cluster
-configuration etc.
+[variables.tf](./variables.tf) defines all available Terraform variables along
+with the AMI lookup logic.
 
 
 ## Prerequisites
