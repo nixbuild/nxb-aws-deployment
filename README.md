@@ -147,6 +147,9 @@ make sure to update the `ssm_param_biscuit_secretkey` and
    The public SSH key you use must be of the type `ed25519` due to a limitation
    in the SSH server in nixbuild.net.
 
+   You can find documentation on the nixbuild.net deployment configuration
+   [here](https://docs.nixbuild.net/latest/system-configuration/).
+
 3. Run `tofu init` if needed, then `tofu apply`.
 
    After a successful apply, the public IP address of the nxb-server will be
